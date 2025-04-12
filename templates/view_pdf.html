@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PDF Viewer</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
+  <script>
+    // 🧠 Set the worker source properly (required for pdf.js)
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.worker.min.js';
+  </script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 ">
+  <div class="max-w-4xl mx-auto py-4 px-4 bg-white shadow-md rounded-lg mt-6">
+    <div class="flex items-center justify-between mb-4">
+      <div class="space-x-2">
+        <button id="prev" class="bg-blue-500 text-white px-3 py-1 rounded">Prev</button>
+        <button id="next" class="bg-blue-500 text-white px-3 py-1 rounded">Next</button>
+        <span class="text-sm">Page <span id="page_num">1</span> / <span id="page_count">--</span></span>
+      </div>
+      <div class="flex space-x-2 items-center">
+        <button id="zoom_in" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded-full" aria-label="Zoom In">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197M15.803 15.803A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607ZM10.5 7.5v6m3-3h-6" />
+          </svg>
+        </button>
+        <button id="zoom_out" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded-full" aria-label="Zoom Out">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197M15.803 15.803A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607ZM13.5 10.5h-6" />
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div id="canvas-container" class="border inner-shadow overflow-auto max-h-[80vh]">
+        <canvas id="pdf-render" class=""></canvas>
+      </div>        
+  </div>
+
+  <script>
+    const pdfBase64 = "{{ pdf_base64 }}"; // Injected via Flask
+    const pdfData = atob(pdfBase64);
+    const pdfArray = new Uint8Array(pdfData.length);
+    for (let i = 0; i < pdfData.length; i++) {
+      pdfArray[i] = pdfData.charCodeAt(i);
+    }
+
+    let pdfDoc = null,
+        pageNum = 1,
+        scale = 1.5,
+        canvas = document.getElementById('pdf-render'),
+        ctx = canvas.getContext('2d');
+
+        function renderPage(num) {
+            pdfDoc.getPage(num).then(page => {
+                const viewport = page.getViewport({ scale });
+
+                // 🔧 Set canvas dimensions
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                // 🔧 Match visual size (fix for zoom not appearing)
+                canvas.style.height = `${viewport.height}px`;
+                canvas.style.width = `${viewport.width}px`;
+
+                const renderContext = {
+                canvasContext: ctx,
+                viewport: viewport
+                };
+
+                page.render(renderContext);
+                document.getElementById('page_num').textContent = num;
+            });
+        }
+
+
+    function queueRenderPage(num) {
+      renderPage(num);
+    }
+
+    function onPrevPage() {
+      if (pageNum <= 1) return;
+      pageNum--;
+      queueRenderPage(pageNum);
+    }
+
+    function onNextPage() {
+      if (pageNum >= pdfDoc.numPages) return;
+      pageNum++;
+      queueRenderPage(pageNum);
+    }
+
+    function zoomIn() {
+      scale += 0.25;
+      queueRenderPage(pageNum);
+    }
+
+    function zoomOut() {
+      if (scale > 0.5) {
+        scale -= 0.25;
+        queueRenderPage(pageNum);
+      }
+    }
+
+    pdfjsLib.getDocument(pdfArray).promise.then(pdfDoc_ => {
+      pdfDoc = pdfDoc_;
+      document.getElementById('page_count').textContent = pdfDoc.numPages;
+      renderPage(pageNum);
+    });
+
+    document.getElementById('prev').addEventListener('click', onPrevPage);
+    document.getElementById('next').addEventListener('click', onNextPage);
+    document.getElementById('zoom_in').addEventListener('click', zoomIn);
+    document.getElementById('zoom_out').addEventListener('click', zoomOut);
+  </script>
+</body>
+</html>

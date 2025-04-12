@@ -1,0 +1,17 @@
+.table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.overflow {
+    width: 12.5rem; /* Adjust for approx. 30 characters */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-top: 0.75rem !important;
+}
+
+.btn-col {
+    width: 6.25rem; /* Adjust button column width */
+    text-align: center;
+}
